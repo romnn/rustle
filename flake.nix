@@ -1,15 +1,8 @@
 {
-  inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    # Provides helpers for Rust toolchains
-    rust-overlay.url = "github:oxalica/rust-overlay";
-    rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
-  };
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
-  outputs = { self, nixpkgs, rust-overlay }:
+  outputs = { self, nixpkgs }:
     let
-      rustFmtVersion = "2024-12-01";
-
       # Systems supported
       allSystems = [
         "x86_64-linux" # 64-bit Intel/AMD Linux
@@ -22,23 +15,10 @@
       forAllSystems = f: nixpkgs.lib.genAttrs allSystems (system: f {
         pkgs = import nixpkgs {
           inherit system;
-          overlays = [
-            # Provides Nixpkgs with a rust-bin attribute for building Rust toolchains
-            rust-overlay.overlays.default
-            # Uses the rust-bin attribute to select a Rust toolchain
-            self.overlays.default
-          ];
         };
       });
     in
     {
-      overlays.default = final: prev: {
-        # The Rust toolchain used for the package build
-        rustToolchain = final.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
-          extensions = [ "rust-analyzer" "rust-src" ];
-        });
-      };
-
       devShells = forAllSystems ({ pkgs } : {
         default = let
           alsapkgs = with pkgs; [
@@ -61,8 +41,9 @@
           buildInputs = with pkgs; [
             pkg-config
             # rustfmt must be kept above rustToolchain in this list!
-            rust-bin.nightly."${rustFmtVersion}".rustfmt
-            rustToolchain
+            rustc
+            cargo
+            rust-analyzer
             (writeShellScriptBin "check-all" ''
               cargo fmt --all -- --check &&
               echo "-------------------- Format ✅ --------------------" &&
@@ -91,12 +72,8 @@
         rustle =
           let
             manifest = (pkgs.lib.importTOML ./Cargo.toml).package;
-            rustPlatform = pkgs.makeRustPlatform {
-              cargo = pkgs.rustToolchain;
-              rustc = pkgs.rustToolchain;
-            };
           in
-          rustPlatform.buildRustPackage {
+          pkgs.rustPlatform.buildRustPackage {
             meta.mainProgram = "rustle";
             name = manifest.name;
             version = manifest.version;

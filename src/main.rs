@@ -1,5 +1,3 @@
-#![feature(mpmc_channel)]
-
 use anyhow::{Context, Result, bail, ensure};
 use clap::Parser;
 use libpulse_binding::context::Context as LibpulseContext;
