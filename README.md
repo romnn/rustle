@@ -78,6 +78,7 @@ work for mine. To enable debugging set the following environment variables:
 **Cargo:**
 
 ```bash
+  sudo apt install libasound2-dev
   cargo install rustle
 ```
 

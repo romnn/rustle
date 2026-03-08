@@ -7,7 +7,7 @@ use libpulse_binding::{context::State, mainloop::standard::Mainloop};
 use libpulse_simple_binding::Simple;
 use log::{debug, error, info};
 use rodio::source::SineWave;
-use rodio::{OutputStream, Sink, Source};
+use rodio::{OutputStreamBuilder, Sink, Source};
 use std::cell::RefCell;
 use std::process::Command;
 use std::rc::Rc;
@@ -22,7 +22,7 @@ const DEBUG_INTERVAL_DEFAULT: u64 = 60;
 #[command(author="Rasmus Kirk", version, about = "Rustle - Keep your digital speakers from sleeping, using low sound signals", long_about = None)]
 struct Args {
     /// Duration of each tone in seconds (0 for continual playback)
-    #[arg(short = 'd', long, default_value_t = 10.0)]
+    #[arg(short = 'd', long, default_value_t = 1.0)]
     pulse_duration: f32,
 
     /// Frequency of the sine wave during pulses in Hz
@@ -30,11 +30,11 @@ struct Args {
     frequency: f32,
 
     /// Amplitude of the sine wave (e.g., 0.01 for 1%)
-    #[arg(short = 'a', long, default_value_t = 0.01)]
+    #[arg(short = 'a', long, default_value_t = 0.05)]
     amplitude: f32,
 
     /// Minutes of undetected sound until the tone plays
-    #[arg(short = 's', long, default_value_t = 10)]
+    #[arg(short = 's', long, default_value_t = 0)]
     minutes_of_silence: u64,
 
     /// Minutes of undetected sound until suspend, set to zero to disable this feature.
@@ -135,8 +135,8 @@ fn play_sound(args: &Args) -> anyhow::Result<()> {
         "Playing {} Hz sine wave for {} seconds",
         args.frequency, args.pulse_duration
     );
-    let (_stream, stream_handle) = OutputStream::try_default()?;
-    let sink = Sink::try_new(&stream_handle)?;
+    let stream = OutputStreamBuilder::open_default_stream()?;
+    let sink = Sink::connect_new(stream.mixer());
     if args.pulse_duration != 0.0 {
         let src = SineWave::new(args.frequency)
             .amplify(args.amplitude)
